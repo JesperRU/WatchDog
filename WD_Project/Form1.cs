@@ -11,6 +11,8 @@ using VkNet;
 using VkNet.Enums.Filters;
 using VkNet.Model.RequestParams;
 using System.IO;
+using System.Text.RegularExpressions;
+using VkNet.Exception;
 
 namespace WD_Project
 {
@@ -21,61 +23,76 @@ namespace WD_Project
             InitializeComponent();
         }
 
+
+        
+        private VkApi Api;
+
+        private void AuthorizeMe()
+        {
+            try
+            {
+                string password = Password.Text;
+                string email = Email.Text;
+                Api = new VkApi();
+                Api.Authorize(new ApiAuthParams
+                {
+                    ApplicationId = 6139393,
+                    Login = email,
+                    Password = password,
+                    Settings = Settings.All
+                });
+            }
+            catch ( VkApiAuthorizationException)
+            {
+                AuthStatus.Text = "Auth faild. Wrong Email or password.";
+            }
+            AuthStatus.Text = "Auth Success.";
+            AuthStatus.ForeColor = Color.Green;
+            ActionStart.Enabled = true;
+        }
+
+
         private void SendMessage(object sender, FileSystemEventArgs e)
         {
-            string password = ""; // пароль
-            var vkApi = new VkApi();
-            vkApi.Authorize(@params: new ApiAuthParams
-            {
-                ApplicationId = 0,
-                Login = "",
-                Password = password,
-                Settings = Settings.All
-            });
-            //long id = 0;
-
-            //if (Chats.Chats.Count != 0)
-            //{
-            //    id = Chats.Chats[0].Id;
-            //}
-            //else
-            //{
-
-            //    return;
-            //}
             DateTime DT = DateTime.Now;
-            var send = vkApi.Messages.Send(@params: new MessagesSendParams
+            var send = Api.Messages.Send(@params: new MessagesSendParams
             {
-                UserId = 0,
-                Message = DT.ToString("yyyy.MM.dd HH.mm.ss") + " "+ e.Name + " " + e.ChangeType
-
+                UserId = Api.UserId,
+                Message = DT.ToString("yyyy.MM.dd HH.mm.ss") + " "+ e.FullPath + " " + e.ChangeType
             });
         }
 
+
         private void button1_Click(object sender, EventArgs e)
         {
-            
-            if (folderBrowserDialog1.ShowDialog() == DialogResult.OK)
-            {
-                string Path = folderBrowserDialog1.SelectedPath;
-                var WatchDog = new FileSystemWatcher(Path);
+            string path = PathDisplay.Text;
+            var watchDog = new FileSystemWatcher(path);
+            watchDog.Changed += SendMessage;
+            watchDog.Created += SendMessage;
+            watchDog.Deleted += SendMessage;
+            watchDog.Renamed += SendMessage;
 
-                WatchDog.Changed += SendMessage;
-                WatchDog.Created += SendMessage;
-                WatchDog.Deleted += SendMessage;
-                WatchDog.Renamed += SendMessage;
-
-                WatchDog.EnableRaisingEvents = true;
-                WatchDog.WaitForChanged(WatcherChangeTypes.All);
-            }
-
-
-
+            watchDog.EnableRaisingEvents = true;
+            watchDog.WaitForChanged(WatcherChangeTypes.All);
+            Hide();
         }
 
         private void folderBrowserDialog1_HelpRequest(object sender, EventArgs e)
         {
 
+        }
+
+        private void Browser_Click(object sender, EventArgs e)
+        {
+            if (folderBrowserDialog1.ShowDialog() == DialogResult.OK)
+            {
+                PathDisplay.Text = folderBrowserDialog1.SelectedPath;
+            }
+        }
+
+        private void AuthMe_Click(object sender, EventArgs e)
+        {
+            AuthorizeMe();
         }
     }
 }
